@@ -98,6 +98,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 }
             }
         }
+        // 处理需要发送到zk server端的数据包
         if (sockKey.isWritable()) {
             synchronized(outgoingQueue) {
                 Packet p = findSendablePacket(outgoingQueue,
@@ -106,6 +107,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 if (p != null) {
                     updateLastSend();
                     // If we already started writing p, p.bb will already exist
+                    // 创建ByteBuffer
                     if (p.bb == null) {
                         if ((p.requestHeader != null) &&
                                 (p.requestHeader.getType() != OpCode.ping) &&

@@ -1027,7 +1027,8 @@ public class ClientCnxn {
 
         private static final String RETRY_CONN_MSG =
             ", closing socket connection and attempting reconnect";
-        
+
+        // 由 ClientCnxn 的 start 方法中的 sendThread.start() 调用
         @Override
         public void run() {
             clientCnxnSocket.introduce(this,sessionId);
@@ -1037,6 +1038,8 @@ public class ClientCnxn {
             long lastPingRwServer = Time.currentElapsedTime();
             final int MAX_SEND_PING_INTERVAL = 10000; //10 seconds
             InetSocketAddress serverAddress = null;
+
+            // 循环检测连接状态，以及数据交互
             while (state.isAlive()) {
                 try {
                     if (!clientCnxnSocket.isConnected()) {
@@ -1097,7 +1100,8 @@ public class ClientCnxn {
                     } else {
                         to = connectTimeout - clientCnxnSocket.getIdleRecv();
                     }
-                    
+
+                    // 连接超时或心跳检测超时，抛出异常被后面的 catch 块捕获，重新进入循环后尝试重连
                     if (to <= 0) {
                         String warnInfo;
                         warnInfo = "Client session timed out, have not heard from server in "
@@ -1115,6 +1119,7 @@ public class ClientCnxn {
                         		((clientCnxnSocket.getIdleSend() > 1000) ? 1000 : 0);
                         //send a ping request either time is due or no packet sent out within MAX_SEND_PING_INTERVAL
                         if (timeToNextPing <= 0 || clientCnxnSocket.getIdleSend() > MAX_SEND_PING_INTERVAL) {
+                            // 发送ping，心跳检测
                             sendPing();
                             clientCnxnSocket.updateLastSend();
                         } else {
@@ -1138,6 +1143,7 @@ public class ClientCnxn {
                         to = Math.min(to, pingRwTimeout - idlePingRwServer);
                     }
 
+                    // socket 数据交互，包括数据读写及心跳检测包的发送
                     clientCnxnSocket.doTransport(to, pendingQueue, outgoingQueue, ClientCnxn.this);
                 } catch (Throwable e) {
                     if (closing) {
@@ -1457,6 +1463,7 @@ public class ClientCnxn {
                 outgoingQueue.add(packet);
             }
         }
+        // 调用 wakeup() 唤醒 selector
         sendThread.getClientCnxnSocket().wakeupCnxn();
         return packet;
     }
