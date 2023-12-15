@@ -682,6 +682,7 @@ public class Learner {
      */
     public void shutdown() {
         self.setZooKeeperServer(null);
+        // 关闭与客户端的所有连接
         self.closeAllConnections();
         self.adminServer.setZooKeeperServer(null);
         closeSocket();

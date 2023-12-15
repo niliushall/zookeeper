@@ -91,6 +91,9 @@ public class Follower extends Learner{
                 syncWithLeader(newEpochZxid);
                 self.setZabState(QuorumPeer.ZabState.BROADCAST);
                 QuorumPacket qp = new QuorumPacket();
+
+                // zk Follower启动后，一直从Leader读取数据
+                // 捕获异常后，退出循环
                 while (this.isRunning()) {
                     readPacket(qp);
                     processPacket(qp);
@@ -149,10 +152,15 @@ public class Follower extends Learner{
            // get new designated leader from (current) leader's message
            ByteBuffer buffer = ByteBuffer.wrap(qp.getData());    
            long suggestedLeaderId = buffer.getLong();
+
+           // 处理reconfig产生的节点变化
             boolean majorChange =
                    self.processReconfig(qv, suggestedLeaderId, qp.getZxid(), true);
            // commit (writes the new config to ZK tree (/zookeeper/config)
            fzk.commit(qp.getZxid());
+
+            // 角色发生变化或Leader发生变化，抛出异常
+            // 外层捕获后处理，同时退出while循环
             if (majorChange) {
                throw new Exception("changes proposed in reconfig");
            }

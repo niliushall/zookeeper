@@ -945,6 +945,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             throw new RuntimeException("My id " + myid + " not in the peer list");
          }
         loadDataBase();
+        // 启动CnxnFactory，监听客户端连接
         startServerCnxnFactory();
         try {
             adminServer.start();
@@ -1328,10 +1329,12 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                     try {
                        LOG.info("FOLLOWING");
                         setFollower(makeFollower(logFactory));
+                        // follow Leader，并死循环从Leader读数据，直到内部捕获到异常
                         follower.followLeader();
                     } catch (Exception e) {
                        LOG.warn("Unexpected exception",e);
                     } finally {
+                       // 与Leader通信异常后，停止Follower
                        follower.shutdown();
                        setFollower(null);
                        updateServerState();
@@ -2023,6 +2026,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
        if (prevQV.getVersion() < qv.getVersion() && !prevQV.equals(qv)) {
            Map<Long, QuorumServer> newMembers = qv.getAllMembers();
            updateRemotePeerMXBeans(newMembers);
+
+           // 重新开始Leader选举
            if (restartLE) restartLeaderElection(prevQV, qv);
 
            QuorumServer myNewQS = newMembers.get(getId());
@@ -2048,6 +2053,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                reconfigFlagClear();
            }
 
+           // 外层抛出异常，以跳出与Leader通信的while循环
            if (roleChange || leaderChange) {
                return true;
            }

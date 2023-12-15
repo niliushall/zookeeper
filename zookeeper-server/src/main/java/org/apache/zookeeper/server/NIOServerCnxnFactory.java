@@ -283,6 +283,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             boolean accepted = false;
             SocketChannel sc = null;
             try {
+                // 新客户端连接
                 sc = acceptSocket.accept();
                 accepted = true;
                 InetAddress ia = sc.socket().getInetAddress();
@@ -301,7 +302,11 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                 if (!selectorIterator.hasNext()) {
                     selectorIterator = selectorThreads.iterator();
                 }
+
+                // acceptThread用于接收客户端新连接，selectorThread用于处理客户端连接的读写请求
                 SelectorThread selectorThread = selectorIterator.next();
+
+                // 将连接添加到acceptedQueue
                 if (!selectorThread.addAcceptedConnection(sc)) {
                     throw new IOException(
                         "Unable to add connection to selector queue"
@@ -360,6 +365,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             if (stopped || !acceptedQueue.offer(accepted)) {
                 return false;
             }
+            // 唤醒 selectorThread 的 select() 方法
             wakeupSelector();
             return true;
         }
@@ -634,9 +640,9 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
 
     private volatile boolean stopped = true;
     private ConnectionExpirerThread expirerThread;
-    private AcceptThread acceptThread;
+    private AcceptThread acceptThread;  // 处理新客户端连接
     private final Set<SelectorThread> selectorThreads =
-        new HashSet<SelectorThread>();
+        new HashSet<SelectorThread>();      // 处理客户端连接数据
 
     @Override
     public void configure(InetSocketAddress addr, int maxcc, boolean secure) throws IOException {

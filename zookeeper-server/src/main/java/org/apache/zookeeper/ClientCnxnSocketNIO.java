@@ -81,8 +81,10 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                                 + Long.toHexString(sessionId)
                                 + ", likely server has closed socket");
             }
+            // incomingBuffer没有剩余空间：1）作为lenBuffer读取长度，4字节读满；2）消息数据读满
             if (!incomingBuffer.hasRemaining()) {
                 incomingBuffer.flip();
+                // 已读取数据长度，根据长度分配Buffer
                 if (incomingBuffer == lenBuffer) {
                     recvCount.getAndIncrement();
                     readLength();
@@ -95,6 +97,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                         // outgoing packets waiting in the outgoingQueue can now be sent.
                         enableWrite();
                     }
+                    // 初始化，每次先读取消息长度，故将incomingBuffer设置为lenBuffer
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
                     updateLastHeard();
@@ -356,6 +359,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         for (SelectionKey k : selected) {
             SocketChannel sc = ((SocketChannel) k.channel());
             if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {
+                // 连接建立成功（建立失败会抛出异常）
                 if (sc.finishConnect()) {
                     updateLastSendAndHeard();
                     updateSocketAddresses();
